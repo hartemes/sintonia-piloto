@@ -1,0 +1,2 @@
+# Isolated synthetic JS runtime test only; no browser or Supabase involved.
+quickjs-ng==0.18.0.1
