@@ -17,6 +17,7 @@ checks = {
     'photo delete response has operation/session guard': "prefixes:[user+'/perfil']}),cache:'no-store'});if(!viewIsCurrent(epoch,user)||photoEpoch!==photoOperationEpoch)return;" in html,
     'login attempts clear/invalidate previous private session': "const previousToken=session?.token;const epoch=++privateViewEpoch;photoOperationEpoch++;photoStateEpoch++;setPhotoBusy(false);consentFlight=null;session=null;clearPrivateView();view()" in html,
     'stale login token is revoked': "if(epoch!==privateViewEpoch){if(x?.access_token)request('/auth/v1/logout','POST',{},x.access_token).catch(()=>{});return}" in html,
+    'issued login token is revoked if post-auth profile setup fails': "let issuedToken=null;try{const x=await request('/auth/v1/token?grant_type=password'" in html and "if(issuedToken)request('/auth/v1/logout','POST',{},issuedToken).catch(()=>{});session=null;clearPrivateView()" in html,
     'likes/messages remain explicitly demo-only': 'curtidas e mensagens não são enviadas, não ficam salvas' in html,
 }
 failed = [name for name, ok in checks.items() if not ok]

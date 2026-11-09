@@ -89,6 +89,7 @@ async function runTests(){
  assertTest('failed profile load clears invalid session',session===null);
  assertTest('failed profile load clears prior private profile fields',$('name').value===''&&$('consentState').textContent==='');
  assertTest('failed profile load hides private sections',$('profileSection').hidden&&$('discoveryConsent').hidden&&$('realChats').hidden);
+ assertTest('post-auth profile failure revokes issued token',requests.some(x=>x.url.includes('/auth/v1/logout')&&x.options.headers.Authorization==='Bearer synthetic-profile-token'));
  mode='normal';
  assertTest('all mocked requests use no-store',requests.every(x=>x.options.cache==='no-store'));
  globalThis.testDone=true;
