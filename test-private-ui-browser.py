@@ -45,9 +45,11 @@ async def main():
     visible = True
     blocked_requests: list[str] = []
     mocked_api_requests: list[str] = []
+    revoked_tokens: list[str] = []
+    fail_next_profile = False
 
     async def route_all(route):
-        nonlocal visible
+        nonlocal visible, fail_next_profile
         request = route.request
         parsed = urlparse(request.url)
         if parsed.hostname in {"127.0.0.1", "localhost"} and parsed.port == server.server_port:
@@ -69,7 +71,13 @@ async def main():
             return
 
         path = parsed.path
-        if path.endswith("/rpc/sintonia_listar_descoberta"):
+        if path.startswith("/auth/v1/token?") and request.method == "POST":
+            body = {"access_token": "synthetic-issued-token", "user": {"id": "synthetic-login-user"}}
+            await route.fulfill(status=200, headers=cors, content_type="application/json", body=json.dumps(body))
+        elif path == "/auth/v1/logout" and request.method == "POST":
+            revoked_tokens.append(request.headers.get("authorization", ""))
+            await route.fulfill(status=204, headers=cors, body="")
+        elif path.endswith("/rpc/sintonia_listar_descoberta"):
             discovery_started.set()
             await release_discovery.wait()
             body = [{"nome": "SYNTHETIC PRIVATE NAME", "idade": 33}]
@@ -81,8 +89,12 @@ async def main():
         elif path.endswith("/rpc/sintonia_ler_minha_visibilidade"):
             await route.fulfill(status=200, headers=cors, content_type="application/json", body=json.dumps(visible))
         elif path.endswith("/rest/v1/sintonia_perfis"):
-            body = [{"usuario_id": "synthetic-user"}]
-            await route.fulfill(status=200, headers=cors, content_type="application/json", body=json.dumps(body))
+            if fail_next_profile and "select=nome_exibicao" in request.url:
+                fail_next_profile = False
+                await route.fulfill(status=500, headers=cors, content_type="application/json", body=json.dumps({"message": "synthetic profile failure"}))
+            else:
+                body = [{"usuario_id": "synthetic-user"}]
+                await route.fulfill(status=200, headers=cors, content_type="application/json", body=json.dumps(body))
         elif path.startswith("/storage/v1/object/authenticated/"):
             await route.fulfill(status=404, headers=cors, body="synthetic missing photo")
         else:
@@ -110,9 +122,26 @@ async def main():
             await page.evaluate("() => new Promise(resolve => setTimeout(resolve, 0))")
             await expect(page.locator("#discoveryResults")).not_to_contain_text("SYNTHETIC PRIVATE NAME", timeout=5000)
             assert visible is False, "synthetic opt-out should update only the in-memory fixture"
+            print("PASS — real Chromium DOM: deferred synthetic discovery response is discarded after opt-out")
+
+            # A second, synthetic login: auth succeeds but profile setup fails. The UI must
+            # discard private state and attempt to revoke the issued synthetic token.
+            await page.locator("#logout").click()
+            await page.locator("#email").fill("synthetic@example.test")
+            await page.locator("#password").fill("synthetic-password")
+            await page.locator("#name").fill("STALE PRIVATE NAME")
+            await page.locator("#consentState").evaluate("el => el.textContent='STALE PRIVATE CONSENT'")
+            fail_next_profile = True
+            await page.locator("#loginForm button[type=submit]").click()
+            await expect(page.locator("#status")).to_contain_text("Não foi possível entrar", timeout=5000)
+            await expect(page.locator("#profileSection")).to_be_hidden()
+            assert await page.locator("#name").input_value() == "", "private form values must be cleared after post-auth profile failure"
+            assert await page.locator("#consentState").text_content() == "", "private consent must be cleared"
+            assert "Bearer synthetic-issued-token" in revoked_tokens, f"synthetic issued token was not revoked: {revoked_tokens}"
+            print("PASS — real Chromium DOM: post-auth profile failure clears private UI and revokes synthetic token")
+
             assert not blocked_requests, f"unexpected/unknown network requests were blocked: {blocked_requests}"
             assert mocked_api_requests, "expected app API calls to be intercepted and synthetically fulfilled"
-            print("PASS — real Chromium DOM: deferred synthetic discovery response is discarded after opt-out")
             print(f"PASS — all {len(mocked_api_requests)} app API request(s) were intercepted; zero outbound requests escaped")
             print("Scope: synthetic frontend regression only; no Supabase endpoint, database, credentials, or real account used.")
             await browser.close()
