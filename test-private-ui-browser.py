@@ -71,7 +71,7 @@ async def main():
             return
 
         path = parsed.path
-        if path.startswith("/auth/v1/token?") and request.method == "POST":
+        if path == "/auth/v1/token" and request.method == "POST":
             body = {"access_token": "synthetic-issued-token", "user": {"id": "synthetic-login-user"}}
             await route.fulfill(status=200, headers=cors, content_type="application/json", body=json.dumps(body))
         elif path == "/auth/v1/logout" and request.method == "POST":
@@ -129,7 +129,7 @@ async def main():
             await page.locator("#logout").click()
             await page.locator("#email").fill("synthetic@example.test")
             await page.locator("#password").fill("synthetic-password")
-            await page.locator("#name").fill("STALE PRIVATE NAME")
+            await page.locator("#name").evaluate("el => el.value = 'STALE PRIVATE NAME'")
             await page.locator("#consentState").evaluate("el => el.textContent='STALE PRIVATE CONSENT'")
             fail_next_profile = True
             await page.locator("#loginForm button[type=submit]").click()
