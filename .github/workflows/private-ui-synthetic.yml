@@ -6,6 +6,7 @@ on:
     paths:
       - 'index.html'
       - 'test-private-ui-mocked.py'
+      - 'test-private-ui-browser.py'
       - 'check-private-ui.py'
       - 'requirements-ui-test.txt'
       - '.github/workflows/private-ui-synthetic.yml'
@@ -29,11 +30,25 @@ jobs:
           python-version: '3.13'
           cache: pip
           cache-dependency-path: requirements-ui-test.txt
-      - name: Install the pinned synthetic JS runtime
+      - name: Install pinned synthetic JS runtime
         run: python -m pip install -r requirements-ui-test.txt
       - name: Run mocked JavaScript regression suite
         run: python test-private-ui-mocked.py
       - name: Run static UI safety checks
         run: python check-private-ui.py
       - name: Check test helper syntax
-        run: python -m py_compile test-private-ui-mocked.py check-private-ui.py
+        run: python -m py_compile test-private-ui-mocked.py check-private-ui.py test-private-ui-browser.py
+  chromium-synthetic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install Playwright and Chromium
+        run: |
+          python -m pip install playwright==1.55.0
+          python -m playwright install --with-deps chromium
+      - name: Run synthetic Chromium regression with network interception
+        run: python test-private-ui-browser.py
