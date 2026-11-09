@@ -73,9 +73,11 @@ async function runTests(){
  $('logout').click();await ticks();pendingUpload(response({}));await ticks();
  assertTest('late upload response after logout is inert',$('status').textContent==='Você saiu.');
  session={user:'synthetic-d',token:'synthetic-token-d'};view();
+ $('consentState').textContent='PRIVATE CONSENT ON LOGOUT';$('discoveryConsent').hidden=false;
  $('deletePhoto').click();await ticks();assertTest('photo deletion request held',typeof pendingDelete==='function');
  $('logout').click();await ticks();pendingDelete(response(null,204));await ticks();
  assertTest('stale delete result does not change logout status',$('status').textContent==='Você saiu.');
+ assertTest('logout clears private consent text and hides its controls',$('consentState').textContent===''&&$('discoveryConsent').hidden);
  assertTest('chat remains paused',CHAT_PAUSED===true);
  session={user:'synthetic-old',token:'synthetic-old-token'};view();
  $('loginForm').submit();await ticks();assertTest('login request held',typeof pendingLogin==='function');

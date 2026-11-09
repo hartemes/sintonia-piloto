@@ -126,7 +126,11 @@ async def main():
 
             # A second, synthetic login: auth succeeds but profile setup fails. The UI must
             # discard private state and attempt to revoke the issued synthetic token.
+            await page.locator("#consentState").evaluate("el => el.textContent='STALE PRIVATE CONSENT ON LOGOUT'")
             await page.locator("#logout").click()
+            await expect(page.locator("#consentState")).to_have_text("")
+            await expect(page.locator("#discoveryConsent")).to_be_hidden()
+            print("PASS — real Chromium DOM: logout clears and hides private consent state")
             await page.locator("#email").fill("synthetic@example.test")
             await page.locator("#password").fill("synthetic-password")
             await page.locator("#name").evaluate("el => el.value = 'STALE PRIVATE NAME'")
