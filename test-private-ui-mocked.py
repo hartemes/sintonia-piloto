@@ -78,6 +78,12 @@ async function runTests(){
  $('logout').click();await ticks();pendingDelete(response(null,204));await ticks();
  assertTest('stale delete result does not change logout status',$('status').textContent==='Você saiu.');
  assertTest('logout clears private consent text and hides its controls',$('consentState').textContent===''&&$('discoveryConsent').hidden);
+ const testToday=new Date(2026,10,9);
+ assertTest('age check accepts exactly 18 on birthday',isAdultBirthDate('2008-11-09',testToday));
+ assertTest('age check rejects under-18 by one day',!isAdultBirthDate('2008-11-10',testToday));
+ assertTest('age check rejects impossible normalized date',!isAdultBirthDate('2008-02-30',testToday));
+ assertTest('age check rejects dates before 1900',!isAdultBirthDate('1899-12-31',testToday));
+ assertTest('age check rejects malformed date',!isAdultBirthDate('09/11/2000',testToday));
  assertTest('chat remains paused',CHAT_PAUSED===true);
  session={user:'synthetic-old',token:'synthetic-old-token'};view();
  $('loginForm').submit();await ticks();assertTest('login request held',typeof pendingLogin==='function');

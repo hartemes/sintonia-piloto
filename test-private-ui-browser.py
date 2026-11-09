@@ -108,6 +108,9 @@ async def main():
             await context.route("**/*", route_all)
             page = await context.new_page()
             await page.goto(origin, wait_until="domcontentloaded")
+            age_checks = await page.evaluate("""() => { const t=new Date(2026,10,9); return [isAdultBirthDate('2008-11-09',t), !isAdultBirthDate('2008-11-10',t), !isAdultBirthDate('2008-02-30',t), !isAdultBirthDate('1899-12-31',t), !isAdultBirthDate('09/11/2000',t)]; }""")
+            assert all(age_checks), f"age validation boundary failed: {age_checks}"
+            print("PASS — real Chromium DOM: age check accepts 18th birthday and rejects underage/invalid/pre-1900 dates")
 
             # Synthetic in-memory session only; no real auth request/account.
             await page.evaluate("async () => { session={user:'synthetic-user',token:'synthetic-token'}; view(); await refreshConsent(); }")
